@@ -25,6 +25,26 @@ service cloud.firestore {
       return request.auth.uid in deviceUidsOf(profileId);
     }
 
+    // users/{uid} 문서가 없으면 null 반환
+    function userRole(uid) {
+      return exists(/databases/$(database)/documents/users/$(uid))
+        ? get(/databases/$(database)/documents/users/$(uid)).data.role
+        : null;
+    }
+
+    // 자녀 계정(role == "child")이면서 해당 profileId를 열람 권한으로 가진 경우
+    function isChildOf(profileId) {
+      return userRole(request.auth.uid) == "child" && profileId in allowedProfiles(request.auth.uid);
+    }
+
+    // 자녀 계정이 "기기 등록 초기화" 버튼으로 deviceUids만 빈 배열로 재설정하는 경우
+    function isChildDeviceReset(profileId) {
+      let existingData = resource != null ? resource.data : {};
+      return isChildOf(profileId) &&
+        request.resource.data.diff(existingData).affectedKeys().hasOnly(["deviceUids"]) &&
+        request.resource.data.deviceUids.size() == 0;
+    }
+
     // 미등록 기기가 자기 uid 하나만 deviceUids에 추가하는 자가 등록(최대 2대)인지 확인.
     // name/deviceUids 외 필드 변경이나 다른 기기 제거는 허용하지 않음.
     function isSelfDeviceRegistration(profileId) {
@@ -41,15 +61,17 @@ service cloud.firestore {
     match /profiles/{profileId} {
       allow read: if isSignedIn() &&
         (profileId in allowedProfiles(request.auth.uid) || isDeviceOfProfile(profileId));
-      // 이미 등록된 기기는 자유롭게 수정 가능, 미등록 기기는 자가 등록만 허용
+      // 이미 등록된 기기는 자유롭게 수정 가능, 미등록 기기는 자가 등록만 허용, 자녀 계정은 기기 등록 초기화만 허용
       allow write: if isSignedIn() &&
-        (isDeviceOfProfile(profileId) || isSelfDeviceRegistration(profileId));
+        (isDeviceOfProfile(profileId) || isSelfDeviceRegistration(profileId) || isChildDeviceReset(profileId));
     }
 
     match /records/{profileId}/days/{date} {
       allow read: if isSignedIn() &&
         (profileId in allowedProfiles(request.auth.uid) || isDeviceOfProfile(profileId));
       allow write: if isSignedIn() && isDeviceOfProfile(profileId);
+      // 자녀 계정의 "기록 데이터 초기화" 버튼 전용 삭제 허용 (부모 기기 쓰기 권한과 별개)
+      allow delete: if isSignedIn() && isChildOf(profileId);
     }
 
     match /users/{uid} {

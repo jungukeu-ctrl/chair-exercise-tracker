@@ -9,6 +9,7 @@ import {
   orderBy,
   getDocs,
   serverTimestamp,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { EXERCISES } from "../constants/exercises";
@@ -75,4 +76,21 @@ export async function getRecordsInRange(profileId, startDate, endDate) {
     result[d.id] = d.data();
   });
   return result;
+}
+
+const DELETE_BATCH_SIZE = 500; // Firestore 배치 쓰기 최대 개수
+
+// 자녀 계정 전용: 해당 프로필의 records/{profileId}/days/* 전체 영구 삭제 (profiles 문서/deviceUids는 건드리지 않음)
+export async function deleteAllDaysForProfile(profileId) {
+  const daysRef = collection(db, "records", profileId, "days");
+  const snap = await getDocs(daysRef);
+  const docs = snap.docs;
+  for (let i = 0; i < docs.length; i += DELETE_BATCH_SIZE) {
+    const batch = writeBatch(db);
+    for (const d of docs.slice(i, i + DELETE_BATCH_SIZE)) {
+      batch.delete(d.ref);
+    }
+    await batch.commit();
+  }
+  return docs.length;
 }

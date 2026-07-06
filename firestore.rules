@@ -7,12 +7,22 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // users/{uid} 문서가 없는 기기(부모용 Anonymous Auth)에서도 예외 없이 빈 배열을 반환
     function allowedProfiles(uid) {
-      return get(/databases/$(database)/documents/users/$(uid)).data.allowedProfiles;
+      return exists(/databases/$(database)/documents/users/$(uid))
+        ? get(/databases/$(database)/documents/users/$(uid)).data.allowedProfiles
+        : [];
+    }
+
+    // profiles/{profileId} 문서가 아직 없어도 예외 없이 빈 배열을 반환
+    function deviceUidsOf(profileId) {
+      return exists(/databases/$(database)/documents/profiles/$(profileId))
+        ? get(/databases/$(database)/documents/profiles/$(profileId)).data.deviceUids
+        : [];
     }
 
     function isDeviceOfProfile(profileId) {
-      return request.auth.uid in resource.data.deviceUids;
+      return request.auth.uid in deviceUidsOf(profileId);
     }
 
     match /profiles/{profileId} {
@@ -24,9 +34,9 @@ service cloud.firestore {
     }
 
     match /records/{profileId}/days/{date} {
-      allow read: if isSignedIn() && profileId in allowedProfiles(request.auth.uid);
-      allow write: if isSignedIn() &&
-        request.auth.uid in get(/databases/$(database)/documents/profiles/$(profileId)).data.deviceUids;
+      allow read: if isSignedIn() &&
+        (profileId in allowedProfiles(request.auth.uid) || isDeviceOfProfile(profileId));
+      allow write: if isSignedIn() && isDeviceOfProfile(profileId);
     }
 
     match /users/{uid} {

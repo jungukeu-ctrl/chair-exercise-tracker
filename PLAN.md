@@ -23,10 +23,14 @@ _(정책성 변경 발생 시 날짜와 함께 여기에 기록)_
 코드/스키마/규칙은 모두 작성 완료.
 - [x] Firebase 신규 프로젝트 실제 생성 (`chairexercise-bfd03`, MyAssetDashBD/Pension-tracer와 분리) — `.env` 값 채움
 - [x] FCM 웹 푸시 인증서(VAPID 키) 발급 — `.env`에 반영
-- [x] GitHub Pages 실제 배포 실행 (`npm run deploy`) — `gh-pages` 브랜치 생성 및 배포 완료
-- [ ] 저장소 Settings > Pages에서 Source가 `gh-pages` 브랜치로 지정돼 있는지 확인 (최초 배포 시 수동 확인 필요할 수 있음)
-- [ ] Firebase Auth 콘솔에서 Google 로그인 + Anonymous 로그인 활성화 (아직 미확인)
-- [ ] Firestore 보안 규칙(`firestore.rules`) 실제 배포 및 시나리오별 테스트 (다른 기기가 다른 프로필 쓰기 시도 등)
+- [x] GitHub Pages 실제 배포 실행 (`npm run deploy`) — `gh-pages` 브랜치 생성 및 배포 완료, Settings > Pages 자동 인식 확인됨
+- [x] Firebase Auth 콘솔에서 Google 로그인 + Anonymous 로그인 활성화 확인
+- [x] Firestore Database 실제 생성 (asia-northeast3)
+- [x] Firestore 보안 규칙(`firestore.rules`) 콘솔에 배포 — 배포 중 발견된 버그 2건 수정 후 반영
+  - `records` 읽기 규칙에 기기(익명 Auth) 기반 접근 허용 누락 → 추가
+  - `profiles` 읽기 규칙이 문서 미존재 시(최초 등록 부트스트랩) 항상 거부되던 문제 → `!exists()` 조건 추가
+- [x] "오늘의 운동" 실사용 확인 — 아버지 프로필 선택, 운동 체크 시 진행률(0/8 → 상승) 정상 반영
+- [ ] Google 로그인 사용 시 `auth/unauthorized-domain` 에러 확인됨 — Authentication > Settings > Authorized domains에 `jungukeu-ctrl.github.io` 추가 필요 (기록 보기 대시보드 로그인 전에 처리 필요)
 - [ ] Cloud Functions(`functions/`) 배포 — Blaze(종량제) 요금제 필요
 - [ ] 실기기 알림 수신 테스트 (안드로이드)
 - [ ] `users/{자녀uid}.role = "child"` 수동 등록 (실제 배포 후)
@@ -39,6 +43,7 @@ _(정책성 변경 발생 시 날짜와 함께 여기에 기록)_
 | 2026-07-06 | v1 전체 구현: Vite+React+Firebase 스캐폴딩, Firestore 데이터 레이어·보안 규칙, "오늘의 운동" 화면(기기 프로필/체크·메모/진행률 링/스트릭/축하 연출/과거 날짜), "기록 보기" 대시보드(구글 로그인/프로필 전환/일·주·월·분기·년 탭/통계 카드/메모 모아보기), 알림 설정 화면 + FCM + Cloud Functions 스케줄 발송. PR #1로 main 병합 (커밋 `972c03e`). 빌드 확인 완료(`npm run build`) |
 | 2026-07-06 | `CLAUDE.md` 전체 교체 (프로젝트 전용 규칙 A + 일반 지침 B 구조) |
 | 2026-07-06 | GitHub Pages 사이트가 빈 화면인 원인 조사(gh-pages 브랜치 미존재 확인) → Firebase 프로젝트(`chairexercise-bfd03`) 신규 생성 및 `.env` 값 채움 → 빌드 확인(`npm run build`) → `npm run deploy`로 GitHub Pages 최초 배포 완료 (타 프로젝트 MyAssetDashBD/Pension-tracer 영향 없음) |
+| 2026-07-06 | 배포 후 "불러오는 중..." 무한 로딩 디버깅: Firebase Auth 미설정(`auth/configuration-not-found`) → Firestore Database 미생성(`client is offline`) → 보안 규칙 버그 2건(익명 기기의 records 읽기 누락, profiles 최초 등록 부트스트랩 차단) 순차 발견·수정. 콘솔에 Firestore Database 생성 및 수정된 `firestore.rules` 배포 후 "오늘의 운동" 실사용 확인(프로필 선택 → 체크 → 진행률 반영) 완료 |
 
 ## 프로젝트 개요 — 데이터 모델 (요약)
 > 상세는 `chair-exercise-tracker-spec.md` 5장 참고. 스키마 변경 시 이 섹션도 함께 갱신.

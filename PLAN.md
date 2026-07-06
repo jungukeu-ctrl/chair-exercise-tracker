@@ -9,7 +9,7 @@ _(정책성 변경 발생 시 날짜와 함께 여기에 기록)_
 - 2026-07-06: `CLAUDE.md` 전체 교체 — 프로젝트 전용 규칙(A: 코드작성 게이트, PLAN.md 중심 운영, DO/CHECK/ACT 사이클, 브랜치·커밋 규칙, Firebase 데이터 분리) + 일반 행동 지침(B) 구조로 재편.
 
 ## 현재 브랜치
-- `claude/file-reading-v928nz` — v1 구현은 PR #1로 이미 main에 병합 완료. 이후 문서 정리(CLAUDE.md 교체, 본 PLAN.md 갱신) 작업을 위해 main 기준으로 재생성해 재사용 중.
+- `claude/chair-tracker-visibility-s7xrdj` — GitHub Pages 사이트가 빈 화면으로 보이는 문제(gh-pages 브랜치 자체가 없어 미배포 상태였음) 조사 및 실제 배포 작업 진행 중.
 - 다음 기능 작업 시작 시 이 브랜치에서 계속 진행하거나, 필요하면 새 브랜치를 판다.
 
 ## 결정 필요 항목 (구현 전 확정 필요 — `CLAUDE.md` A-6 참고)
@@ -20,13 +20,15 @@ _(정책성 변경 발생 시 날짜와 함께 여기에 기록)_
 - [x] 알림 시간 커스터마이징 여부 → **설정 화면에서 프로필별 변경 가능** (스펙의 "v1 고정 20시" 대신 확장 — Cloud Functions 스케줄러 필요해짐)
 
 ## 남은 작업 (To-Do)
-코드/스키마/규칙은 모두 작성 완료. 아래는 **실제 Firebase 프로젝트/배포 환경이 있어야 가능한** 항목만 남음.
-- [ ] Firebase 신규 프로젝트 실제 생성 (콘솔 작업, MyAssetDashBD/Pension-tracer와 분리) — `.env` 값 채우기 선행 필요
-- [ ] Firebase Auth 콘솔에서 Google 로그인 + Anonymous 로그인 활성화
+코드/스키마/규칙은 모두 작성 완료.
+- [x] Firebase 신규 프로젝트 실제 생성 (`chairexercise-bfd03`, MyAssetDashBD/Pension-tracer와 분리) — `.env` 값 채움
+- [x] FCM 웹 푸시 인증서(VAPID 키) 발급 — `.env`에 반영
+- [x] GitHub Pages 실제 배포 실행 (`npm run deploy`) — `gh-pages` 브랜치 생성 및 배포 완료
+- [ ] 저장소 Settings > Pages에서 Source가 `gh-pages` 브랜치로 지정돼 있는지 확인 (최초 배포 시 수동 확인 필요할 수 있음)
+- [ ] Firebase Auth 콘솔에서 Google 로그인 + Anonymous 로그인 활성화 (아직 미확인)
 - [ ] Firestore 보안 규칙(`firestore.rules`) 실제 배포 및 시나리오별 테스트 (다른 기기가 다른 프로필 쓰기 시도 등)
 - [ ] Cloud Functions(`functions/`) 배포 — Blaze(종량제) 요금제 필요
-- [ ] FCM 웹 푸시 인증서(VAPID 키) 발급 및 실기기 알림 수신 테스트 (안드로이드)
-- [ ] GitHub Pages 실제 배포 실행 (`npm run deploy`) — 스크립트는 준비됨, 아직 미실행
+- [ ] 실기기 알림 수신 테스트 (안드로이드)
 - [ ] `users/{자녀uid}.role = "child"` 수동 등록 (실제 배포 후)
 
 ## 완료된 작업
@@ -36,6 +38,7 @@ _(정책성 변경 발생 시 날짜와 함께 여기에 기록)_
 | 2026-07-06 | 결정 필요 항목 4개 확정 (위 목록 참고) |
 | 2026-07-06 | v1 전체 구현: Vite+React+Firebase 스캐폴딩, Firestore 데이터 레이어·보안 규칙, "오늘의 운동" 화면(기기 프로필/체크·메모/진행률 링/스트릭/축하 연출/과거 날짜), "기록 보기" 대시보드(구글 로그인/프로필 전환/일·주·월·분기·년 탭/통계 카드/메모 모아보기), 알림 설정 화면 + FCM + Cloud Functions 스케줄 발송. PR #1로 main 병합 (커밋 `972c03e`). 빌드 확인 완료(`npm run build`) |
 | 2026-07-06 | `CLAUDE.md` 전체 교체 (프로젝트 전용 규칙 A + 일반 지침 B 구조) |
+| 2026-07-06 | GitHub Pages 사이트가 빈 화면인 원인 조사(gh-pages 브랜치 미존재 확인) → Firebase 프로젝트(`chairexercise-bfd03`) 신규 생성 및 `.env` 값 채움 → 빌드 확인(`npm run build`) → `npm run deploy`로 GitHub Pages 최초 배포 완료 (타 프로젝트 MyAssetDashBD/Pension-tracer 영향 없음) |
 
 ## 프로젝트 개요 — 데이터 모델 (요약)
 > 상세는 `chair-exercise-tracker-spec.md` 5장 참고. 스키마 변경 시 이 섹션도 함께 갱신.

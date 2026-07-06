@@ -13,6 +13,7 @@ import {
 import { lastNDays, lastNMonths, monthlyAverage } from "../lib/dateRanges";
 import StatsCards from "../components/StatsCards";
 import MemoList from "../components/MemoList";
+import ProfileManagement from "../components/ProfileManagement";
 import DayView from "../components/period-views/DayView";
 import WeekView from "../components/period-views/WeekView";
 import MonthHeatmap from "../components/period-views/MonthHeatmap";
@@ -65,6 +66,17 @@ export default function Dashboard() {
     if (!profileId || tab !== "일") return;
     getDayRecord(profileId, selectedDate).then(setDayRecord);
   }, [profileId, tab, selectedDate]);
+
+  const handleRecordsDeleted = useCallback(
+    (deletedProfileId) => {
+      if (deletedProfileId !== profileId) return;
+      loadAllRecords();
+      if (tab === "일") {
+        getDayRecord(profileId, selectedDate).then(setDayRecord);
+      }
+    },
+    [profileId, tab, selectedDate, loadAllRecords]
+  );
 
   if (!ready) return <div className="loading">불러오는 중...</div>;
 
@@ -219,6 +231,8 @@ export default function Dashboard() {
         <h2>최근 메모</h2>
         <MemoList records={allRecords} />
       </section>
+
+      {access.role === "child" && <ProfileManagement onRecordsDeleted={handleRecordsDeleted} />}
     </div>
   );
 }

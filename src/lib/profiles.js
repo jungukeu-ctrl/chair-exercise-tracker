@@ -19,3 +19,8 @@ export async function setNotificationTime(profileId, time) {
 export async function addFcmToken(profileId, token) {
   await setDoc(doc(db, "profiles", profileId), { fcmTokens: arrayUnion(token) }, { merge: true });
 }
+
+// 자녀 계정 전용: 등록된 기기를 모두 해제 (다음 접속 기기가 새로 자동 등록됨)
+export async function resetDeviceUids(profileId) {
+  await setDoc(doc(db, "profiles", profileId), { deviceUids: [] }, { merge: true });
+}

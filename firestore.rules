@@ -25,12 +25,25 @@ service cloud.firestore {
       return request.auth.uid in deviceUidsOf(profileId);
     }
 
+    // 미등록 기기가 자기 uid 하나만 deviceUids에 추가하는 자가 등록(최대 2대)인지 확인.
+    // name/deviceUids 외 필드 변경이나 다른 기기 제거는 허용하지 않음.
+    function isSelfDeviceRegistration(profileId) {
+      let before = deviceUidsOf(profileId);
+      let after = request.resource.data.deviceUids;
+      let existingData = resource != null ? resource.data : {};
+      return request.resource.data.diff(existingData).affectedKeys().hasOnly(["name", "deviceUids"]) &&
+        after.hasAll(before) &&
+        after.size() == before.size() + 1 &&
+        after.removeAll(before).hasOnly([request.auth.uid]) &&
+        after.size() <= 2;
+    }
+
     match /profiles/{profileId} {
       allow read: if isSignedIn() &&
         (profileId in allowedProfiles(request.auth.uid) || isDeviceOfProfile(profileId));
-      // 기기 등록(익명 uid 추가)과 알림 설정은 해당 기기 자신만 수정 가능
-      allow write: if isSignedIn() && isDeviceOfProfile(profileId);
-      allow create: if isSignedIn();
+      // 이미 등록된 기기는 자유롭게 수정 가능, 미등록 기기는 자가 등록만 허용
+      allow write: if isSignedIn() &&
+        (isDeviceOfProfile(profileId) || isSelfDeviceRegistration(profileId));
     }
 
     match /records/{profileId}/days/{date} {

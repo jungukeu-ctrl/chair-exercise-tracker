@@ -7,6 +7,7 @@
 _(정책성 변경 발생 시 날짜와 함께 여기에 기록)_
 
 - 2026-07-06: `CLAUDE.md` 전체 교체 — 프로젝트 전용 규칙(A: 코드작성 게이트, PLAN.md 중심 운영, DO/CHECK/ACT 사이클, 브랜치·커밋 규칙, Firebase 데이터 분리) + 일반 행동 지침(B) 구조로 재편.
+- 2026-07-06: 기기 자가등록 구조적 실패 문제 해결 방향 확정 — (1) 클라이언트 사전 존재확인 read 제거, `profiles` write 규칙에 "미등록 기기의 자가등록(자기 uid만 추가)" 예외 추가. (2) 프로필당(father/mother 각각) `deviceUids` 최대 2대 상한 — 오늘의 운동 입력용 익명 기기 등록에만 적용, 대시보드(구글 로그인) 열람은 제한 없음. (3) "오늘의 운동" 화면에서 폰이 아닌 기기 접속 시 안내 문구 표시 + 체크 버튼 비활성화(보안 차단 아닌 UX 안내 수준), 대시보드에는 미적용.
 
 ## 현재 브랜치
 - `claude/chair-tracker-visibility-s7xrdj` — GitHub Pages 사이트가 빈 화면으로 보이는 문제(gh-pages 브랜치 자체가 없어 미배포 상태였음) 조사 및 실제 배포 작업 진행 중.
@@ -30,7 +31,8 @@ _(정책성 변경 발생 시 날짜와 함께 여기에 기록)_
 - [ ] Cloud Functions(`functions/`) 배포 — Blaze(종량제) 요금제 필요
 - [ ] 실기기 알림 수신 테스트 (안드로이드)
 - [ ] `users/{자녀uid}.role = "child"` 수동 등록 (실제 배포 후)
-- [ ] **[미해결, 결정 대기]** 기기 자가 등록(`registerDeviceForProfile`)이 보안 규칙상 구조적으로 항상 실패하는 문제 — 에뮬레이터로 재현 확인(아래 완료 로그 참고). 해결 방안 결정 필요: (a) `profiles` read 완화 + 자가등록 write만 허용하도록 규칙 개선, (b) 클라이언트 존재확인 read 제거 + write 규칙만 개선. 사용자 결정 대기 중.
+- [x] 기기 자가 등록(`registerDeviceForProfile`) 구조적 실패 문제 해결 — 클라이언트 존재확인 read 제거 + `profiles` write 규칙에 자가등록 예외(자기 uid만 추가, 최대 2대) 추가, 에뮬레이터로 검증 완료
+- [x] "오늘의 운동" 화면 PC/태블릿 접근 안내 문구 + 체크 버튼 비활성화 추가
 
 ## 완료된 작업
 | 날짜 | 내용 |
@@ -41,6 +43,7 @@ _(정책성 변경 발생 시 날짜와 함께 여기에 기록)_
 | 2026-07-06 | `CLAUDE.md` 전체 교체 (프로젝트 전용 규칙 A + 일반 지침 B 구조) |
 | 2026-07-06 | GitHub Pages 사이트가 빈 화면인 원인 조사(gh-pages 브랜치 미존재 확인) → Firebase 프로젝트(`chairexercise-bfd03`) 신규 생성 및 `.env` 값 채움 → 빌드 확인(`npm run build`) → `npm run deploy`로 GitHub Pages 최초 배포 완료 (타 프로젝트 MyAssetDashBD/Pension-tracer 영향 없음) |
 | 2026-07-06 | "어머니 선택 후 불러오는 중 멈춤" 버그 조사 → `firestore.rules`의 `records/{profileId}/days/{date}` 읽기 규칙에 `isDeviceOfProfile` 체크가 빠져있던 버그 발견·수정, `allowedProfiles`/`deviceUidsOf`를 `exists()` 가드로 안전하게 개선(존재하지 않는 문서 `get()` 시 예외 대신 빈 배열 반환). `TodayExercise.jsx`에 로딩 에러 상태 추가(무한 스피너 대신 에러 메시지 표시). Firestore 에뮬레이터(`@firebase/rules-unit-testing`)로 직접 재현·검증하는 과정에서 **더 근본적인 별도 문제 발견**: `registerDeviceForProfile()`의 존재확인 `getDoc()` 자체가 신규/기존 프로필 관계없이 항상 권한 거부되어 기기 자가등록이 구조적으로 항상 실패함(에뮬레이터로 실증). 이 문제는 A-6에서 결정된 "Anonymous Auth 기기 매핑" 방식의 보안 규칙 재설계가 필요해 사용자 결정 대기 중(위 남은 작업 참고). `npm run build` 통과 확인. 타 프로젝트 영향 없음 |
+| 2026-07-06 | 기기 자가등록 문제 해결(위 전략 세션 로그 참고): `src/lib/profiles.js`의 `registerDeviceForProfile()`에서 사전 존재확인 `getDoc()` 제거, 항상 `setDoc(merge:true)` + `arrayUnion`으로 단순화. `firestore.rules`에 `isSelfDeviceRegistration()` 함수 추가 — 미등록 기기가 `name`/`deviceUids` 외 필드는 건드리지 않고 자기 uid 하나만 추가하는 경우만 허용, 프로필당 `deviceUids` 최대 2대 상한 적용(`allow create` 규칙은 이 함수로 대체되어 제거, 이전에는 로그인만 하면 누구나 임의 내용으로 프로필 문서를 생성할 수 있던 허점도 함께 닫힘). `src/lib/device.js` 신규 추가(`isMobileDevice()` — `navigator.userAgentData.mobile` 우선, `navigator.userAgent`의 "Mobile" 포함 여부로 폴백). `TodayExercise.jsx`에 PC/태블릿 접속 시 안내 문구(`.device-notice`, `App.css`에 스타일 추가) 표시 및 `ExerciseCard`의 체크 버튼 비활성화(`disabled` prop 추가) — 보안 차단이 아닌 UX 안내이며 대시보드에는 미적용. Firestore 에뮬레이터로 7개 시나리오(신규 생성/2대까지 등록/3대째 거부/records 읽기/설정 변경/자가등록 위장 필드변경 거부/타 기기 제거 시도 거부) 모두 기대대로 동작 확인. `npm run build` 통과. 타 프로젝트 영향 없음 |
 
 ## 프로젝트 개요 — 데이터 모델 (요약)
 > 상세는 `chair-exercise-tracker-spec.md` 5장 참고. 스키마 변경 시 이 섹션도 함께 갱신.

@@ -1,19 +1,10 @@
 // profiles/{profileId} 문서에 현재 기기(익명 uid)를 등록/조회하는 헬퍼
-import { doc, getDoc, setDoc, arrayUnion, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, arrayUnion } from "firebase/firestore";
 import { db } from "../firebase";
 
 export async function registerDeviceForProfile(profileId, uid) {
   const ref = doc(db, "profiles", profileId);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) {
-    await setDoc(ref, {
-      name: profileId,
-      deviceUids: [uid],
-      createdAt: serverTimestamp(),
-    });
-    return;
-  }
-  await setDoc(ref, { deviceUids: arrayUnion(uid) }, { merge: true });
+  await setDoc(ref, { name: profileId, deviceUids: arrayUnion(uid) }, { merge: true });
 }
 
 export async function getProfile(profileId) {

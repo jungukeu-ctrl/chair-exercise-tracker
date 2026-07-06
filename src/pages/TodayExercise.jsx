@@ -22,6 +22,7 @@ export default function TodayExercise() {
   const [dayRecord, setDayRecord] = useState(null);
   const [streak, setStreak] = useState(0);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [loadError, setLoadError] = useState(null);
 
   const isToday = selectedDate === toDateStr(new Date());
 
@@ -41,11 +42,12 @@ export default function TodayExercise() {
   }, [profileId]);
 
   useEffect(() => {
-    loadDay();
+    setLoadError(null);
+    loadDay().catch((err) => setLoadError(err.message));
   }, [loadDay]);
 
   useEffect(() => {
-    loadStreak();
+    loadStreak().catch((err) => setLoadError(err.message));
   }, [loadStreak]);
 
   async function handleToggle(exerciseId, done) {
@@ -65,6 +67,7 @@ export default function TodayExercise() {
 
   if (!ready) return <div className="loading">불러오는 중...</div>;
   if (!profileId) return <ProfilePicker onSelect={setProfileId} />;
+  if (loadError) return <div className="loading">기록을 불러오지 못했습니다. ({loadError})</div>;
   if (!dayRecord) return <div className="loading">불러오는 중...</div>;
 
   const profileName = PROFILES.find((p) => p.id === profileId)?.name;

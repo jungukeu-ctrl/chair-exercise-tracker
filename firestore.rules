@@ -24,7 +24,9 @@ service cloud.firestore {
     }
 
     match /records/{profileId}/days/{date} {
-      allow read: if isSignedIn() && profileId in allowedProfiles(request.auth.uid);
+      allow read: if isSignedIn() &&
+        (profileId in allowedProfiles(request.auth.uid) ||
+         request.auth.uid in get(/databases/$(database)/documents/profiles/$(profileId)).data.deviceUids);
       allow write: if isSignedIn() &&
         request.auth.uid in get(/databases/$(database)/documents/profiles/$(profileId)).data.deviceUids;
     }

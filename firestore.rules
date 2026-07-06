@@ -17,7 +17,8 @@ service cloud.firestore {
 
     match /profiles/{profileId} {
       allow read: if isSignedIn() &&
-        (profileId in allowedProfiles(request.auth.uid) || isDeviceOfProfile(profileId));
+        (!exists(/databases/$(database)/documents/profiles/$(profileId)) ||
+         profileId in allowedProfiles(request.auth.uid) || isDeviceOfProfile(profileId));
       // 기기 등록(익명 uid 추가)과 알림 설정은 해당 기기 자신만 수정 가능
       allow write: if isSignedIn() && isDeviceOfProfile(profileId);
       allow create: if isSignedIn();

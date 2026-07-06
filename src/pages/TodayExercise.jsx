@@ -1,6 +1,7 @@
 // 오늘의 운동 기록 화면 (부모님용, 로그인 없음)
 import { useEffect, useState, useCallback } from "react";
 import { useDeviceProfile } from "../hooks/useDeviceProfile";
+import { isMobileDevice } from "../lib/device";
 import { EXERCISES, PROFILES } from "../constants/exercises";
 import { getDayRecord, setExerciseDone, setExerciseMemo, getRecordsInRange } from "../lib/records";
 import { calcCurrentStreak } from "../lib/stats";
@@ -23,6 +24,7 @@ export default function TodayExercise() {
   const [streak, setStreak] = useState(0);
   const [showCelebration, setShowCelebration] = useState(false);
   const [loadError, setLoadError] = useState(null);
+  const isMobile = isMobileDevice();
 
   const isToday = selectedDate === toDateStr(new Date());
 
@@ -84,6 +86,8 @@ export default function TodayExercise() {
         </button>
       </header>
 
+      {!isMobile && <div className="device-notice">이 화면은 폰에서 이용해주세요.</div>}
+
       <div className="date-nav">
         <input
           type="date"
@@ -106,6 +110,7 @@ export default function TodayExercise() {
             exercise={ex}
             done={dayRecord.exercises[ex.id]?.done || false}
             memo={dayRecord.exercises[ex.id]?.memo}
+            disabled={!isMobile}
             onToggle={(done) => handleToggle(ex.id, done)}
             onMemoChange={(memo) => handleMemoChange(ex.id, memo)}
           />

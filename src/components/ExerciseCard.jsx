@@ -1,7 +1,7 @@
 // 운동 1개 카드: 이름/목적/목표 + 체크 버튼 + 메모 입력
 import { useState } from "react";
 
-export default function ExerciseCard({ exercise, done, memo, onToggle, onMemoChange }) {
+export default function ExerciseCard({ exercise, done, memo, onToggle, onMemoChange, disabled }) {
   const [memoDraft, setMemoDraft] = useState(memo || "");
   const [editingMemo, setEditingMemo] = useState(false);
 
@@ -20,7 +20,12 @@ export default function ExerciseCard({ exercise, done, memo, onToggle, onMemoCha
           <p className="purpose">{exercise.purpose}</p>
           <p className="goal">목표: {exercise.goal}</p>
         </div>
-        <button className="check-button" onClick={() => onToggle(!done)} aria-pressed={done}>
+        <button
+          className="check-button"
+          onClick={() => onToggle(!done)}
+          aria-pressed={done}
+          disabled={disabled}
+        >
           {done ? "✅" : "⬜"}
         </button>
       </div>

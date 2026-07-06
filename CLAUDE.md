@@ -1,132 +1,105 @@
-# CLAUDE.md
+# CLAUDE.md — chair-exercise-tracker
 
-Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
-
-**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
-
-## 1. Think Before Coding
-
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
-
-Before implementing:
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them - don't pick silently.
-- If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
-
-## 2. Simplicity First
-
-**Minimum code that solves the problem. Nothing speculative.**
-
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If you write 200 lines and it could be 50, rewrite it.
-
-Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
-
-## 3. Surgical Changes
-
-**Touch only what you must. Clean up only your own mess.**
-
-When editing existing code:
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it - don't delete it.
-
-When your changes create orphans:
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
-
-The test: Every changed line should trace directly to the user's request.
-
-## 4. Goal-Driven Execution
-
-**Define success criteria. Loop until verified.**
-
-Transform tasks into verifiable goals:
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
-
-For multi-step tasks, state a brief plan:
-```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
-```
-
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
-
-## 5. No Closing Colons (Korean Output)
-
-**End Korean sentences with a period, not a colon.**
-
-When the user writes in Korean, your output is also Korean:
-- Don't end sentences with `:` even if the next line is a list or example.
-- LLMs trained on English docs leak the colon habit into Korean. Catch it.
-- The test: every Korean sentence terminator should be `.`, `?`, or `!` — not `:`.
-- Colons are fine inside code, key-value pairs, or labels. Not as sentence enders.
-
-## 6. File Header Comments in Korean
-
-**First line of every new source file: a one-line Korean comment stating its role.**
-
-When creating a new file:
-- TypeScript/JavaScript: `// 사용자 인증 상태를 관리하는 Context Provider`
-- Python: `# KIS API 호출을 비동기로 래핑하는 클라이언트`
-- SQL: `-- 일별 집계 결과를 저장하는 머티리얼라이즈드 뷰`
-- Place it directly under required directives (`'use client'`, `'use server'`, shebang).
-- Skip config files (`*.config.ts`, `package.json`, etc.).
-
-Why: agents read files selectively, not whole codebases. A one-line Korean header gives instant context so the next session (human or agent) can navigate without re-reading the entire file.
-
-## 7. Plan + Checklist + Context Notes
-
-**Before any non-trivial task, produce three artifacts. Don't start coding without them.**
-
-- **Plan** — what we're building and why.
-- **Checklist** (`checklist.md`) — concrete tasks as checkboxes. Tick as you go.
-- **Context Notes** (`context-notes.md`) — decisions made during the work and the reasoning behind them. Append continuously.
-
-If the user gives only a plan and asks you to start coding, stop and ask: "Should I create the checklist and context notes first?" The next session — yours or someone else's — needs the notes to pick up where you left off without re-deriving every decision.
-
-## 8. Run Tests Before Marking Complete
-
-**If you touched code, run the tests before saying "done".**
-
-- `npm test`, `pytest`, `cargo test`, whatever the project uses — run it.
-- If tests pass, report results. If they fail, fix and re-run.
-- No test setup? At minimum, verify the project builds/compiles.
-- Run tests proactively, before the user signals "끝", "완료", "다 됐어" — not after.
-
-This is the step LLMs skip most often. Treat it as non-negotiable.
-
-## 9. Semantic Commits
-
-**Commit when one logical change is complete. Don't wait for the user to ask.**
-
-- The test: "Can I describe this commit in one sentence?" If yes, commit. If no, the changes are still mixed — split them.
-- Good: "auth 미들웨어 추가". Bad: "auth 추가하고 UI도 고치고 버그도 수정" (split into 3).
-- Don't accumulate 20 unrelated edits and lose the ability to roll back individually.
-- Don't commit just to commit — meaningful units only.
-
-Note: For solo prototypes or throwaway scripts, group commits loosely if it slows you down. The point is reversibility, not ceremony.
-
-## 10. Read Errors, Don't Guess
-
-**Read the actual error/log line. Don't pattern-match from memory.**
-
-When something fails:
-- Read the full error message and stack trace.
-- Check the actual log output, not what you assume it should say.
-- Don't apply a "common fix" before confirming the cause.
-- If unclear, add a print/log to verify state — then fix.
-
-This is the step LLMs skip most often after "run tests". They guess from error keywords and apply the most-recent-pattern fix. That's how a one-line bug becomes a three-file refactor.
+## 0. 우선순위
+아래 "프로젝트 전용 규칙"이 "일반 행동 지침"보다 항상 우선한다.
+충돌 시 프로젝트 전용 규칙을 따른다.
 
 ---
 
-**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+## A. 프로젝트 전용 규칙 (최우선)
+
+### A-1. 코드작성 게이트
+- "코드작성" 메시지가 오기 전까지 절대 코드 작성/수정 금지
+- 분석, 계획, 설명만 하고 대기
+- 모든 코드 작업 완료 시 반드시 "코드작업완료" 알림
+- 모든 파일은 GitHub `jungukeu-ctrl/chair-exercise-tracker` main 브랜치가 기준
+  - 로컬 디스크 파일을 기준으로 삼지 않음
+  - 작업 전 항상 `git fetch origin main`으로 최신 파일 확인
+
+### A-2. PLAN.md = 유일한 진실 공급원
+- 대화 시작 시 반드시 PLAN.md 읽기
+- PLAN.md가 "일반 행동 지침 7번"의 Plan + Checklist 역할을 겸한다
+  - 별도 checklist.md는 만들지 않고, PLAN.md의 "남은 작업" 표를 체크리스트로 사용
+  - 복잡한 작업에서 결정 배경을 남겨야 할 경우에만 context-notes.md를 추가로 사용 (선택)
+- 작업 전 변경 범위, 영향받는 기능, 예상 위험 분석 후 보고 → 사용자 확인(OK) 후 진행
+
+### A-3. 작업 사이클 (DO → CHECK → ACT)
+- DO: 한 번에 하나만 수정, 요청 외 코드 건드리지 않음, 별도 요청 없는 리팩토링 금지
+- CHECK: 수정 위치/내용, 영향받은 기능, 잠재적 오류, 계산 로직(진행률·스트릭 등)은 예시 숫자로 검증
+- ACT: "코드작업완료" 알림 후 PLAN.md 갱신 (완료 작업 추가/남은 작업 정리/스키마 변경 반영)
+
+### A-4. 브랜치 & 커밋
+- main에 직접 push 금지, 개발 브랜치는 세션 시작 시 PLAN.md에서 확인
+- 커밋은 "일반 행동 지침 9번"(시맨틱 커밋)을 따르되, 코드작성 게이트 승인 이후에만 발생
+- 커밋 전 반드시 "일반 행동 지침 8번"(테스트 실행)을 통과했는지 확인 — 즉 "코드작업완료" 선언 전 테스트 필수
+
+### A-5. 데이터 분리
+- 이 프로젝트의 Firebase(Firestore/Auth/FCM)는 신규 프로젝트이며, 기존 MyAssetDashBD·Pension-tracer의 Firebase와 절대 공유하지 않음
+- 컬렉션/스키마 변경 시 다른 프로젝트에 영향 없음을 전제로 작업, 영향도 보고 시 "타 프로젝트 영향 없음" 명시
+
+### A-6. 결정 필요 항목 (구현 전 반드시 확인)
+chair-exercise-tracker-spec.md 참고, 아래 4개는 확정 전까지 관련 기능 구현하지 않음:
+1. 기록 화면 쓰기 인증 방식 (Anonymous Auth vs 기기 토큰)
+2. 자녀 계정 role 부여 방법 (수동 vs 초대 코드)
+3. 오프라인 대비 방식
+4. 알림 시간 커스터마이징 여부 (v1 고정 20:00 여부)
+
+---
+
+## B. 일반 행동 지침 (모든 작업 공통)
+
+> 트레이드오프: 아래 지침은 속도보다 신중함에 무게를 둔다. 사소한 작업에는 판단력을 발휘할 것.
+
+### B-1. 코딩 전에 생각하기
+- 가정하지 말 것. 혼란을 숨기지 말 것. 트레이드오프를 드러낼 것.
+- 구현 전 가정을 명시적으로 말한다. 불확실하면 묻는다.
+- 여러 해석이 가능하면 제시한다 — 조용히 하나를 고르지 않는다.
+- 더 단순한 접근이 있으면 말한다. 필요하면 반박한다.
+- 불명확하면 멈추고, 무엇이 혼란스러운지 이름 붙여 묻는다.
+
+### B-2. 단순함 우선
+- 문제를 해결하는 최소한의 코드만 작성한다.
+- 요청 이상의 기능 없음, 1회성 코드에 대한 추상화 없음, 요청하지 않은 유연성/설정 가능성 없음, 불가능한 시나리오용 에러 핸들링 없음.
+- 200줄로 짰는데 50줄로 될 것 같으면 다시 쓴다.
+- 스스로 물어볼 것: "시니어 엔지니어가 보면 과하다고 할까?" 그렇다면 단순화한다.
+
+### B-3. 외과적 수정
+- 반드시 필요한 부분만 건드린다. 본인이 만든 것만 정리한다.
+- 인접 코드/주석/포맷을 "개선"하지 않는다. 고장 나지 않은 걸 리팩토링하지 않는다.
+- 기존 스타일을 따른다, 본인 취향과 달라도.
+- 무관한 죽은 코드를 발견하면 언급만 하고 삭제하지 않는다.
+- 본인의 변경으로 인해 생긴 미사용 import/변수/함수만 제거한다. 기존 죽은 코드는 요청 없이 제거하지 않는다.
+- 테스트: 변경된 모든 줄은 사용자의 요청으로 직접 추적 가능해야 한다.
+
+### B-4. 목표 지향 실행
+- 작업을 검증 가능한 목표로 변환한다.
+  - "검증 추가" → "잘못된 입력에 대한 테스트를 작성하고 통과시킨다"
+  - "버그 수정" → "버그를 재현하는 테스트를 작성하고 통과시킨다"
+  - "X 리팩토링" → "리팩토링 전후 테스트 통과 확인"
+- 다단계 작업은 간단한 계획을 명시한다.
+
+### B-5. 한글 출력 시 콜론으로 문장 끝내지 않기
+- 한국어 문장은 마침표(.)/물음표(?)/느낌표(!)로 끝난다. 콜론(:)으로 끝내지 않는다.
+- 코드, 키-값 쌍, 라벨 안의 콜론은 무방하다.
+
+### B-6. 새 파일 첫 줄 — 한글 주석
+- 새 소스 파일 생성 시 첫 줄에 역할을 설명하는 한 줄 한글 주석을 넣는다.
+- `'use client'` 등 필수 지시어 바로 아래에 위치. config 파일은 생략.
+
+### B-7. 완료 전 테스트 실행
+- 코드를 건드렸다면 "코드작업완료"라고 알리기 전에 반드시 테스트를 실행한다.
+- 테스트 환경이 없으면 최소한 빌드/컴파일 여부를 확인한다.
+- 실패하면 고치고 재실행한다.
+
+### B-8. 시맨틱 커밋
+- 논리적으로 하나의 변경이 끝나면 커밋한다 (단, A-4에 따라 코드작성 게이트 승인 이후에만).
+- "한 문장으로 설명 가능한가?"가 기준. 아니면 아직 섞여있는 것 — 나눈다.
+
+### B-9. 에러는 읽고, 추측하지 않기
+- 실제 에러 메시지와 스택 트레이스를 읽는다. 기억으로 패턴 매칭하지 않는다.
+- 실제 로그 출력을 확인한다. 원인 확인 전 "흔한 해결법"을 적용하지 않는다.
+- 불명확하면 print/log를 추가해 상태를 확인한 뒤 고친다.
+
+---
+
+**이 지침이 잘 작동하고 있다는 신호:** diff에서 불필요한 변경이 줄어들고, 과도한 설계로 인한 재작성이 줄어들고, 구현 전에 명확화 질문이 먼저 오는 것.

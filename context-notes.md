@@ -30,3 +30,32 @@
 ### Firebase 프로젝트 자체는 이 세션에서 생성 불가
 - 실제 Firebase 프로젝트 생성, API 키 발급, Google/Anonymous Auth 활성화, FCM VAPID 키 발급은 Firebase 콘솔에서 사용자가 직접 해야 함.
 - 코드는 `.env` 기반으로 Firebase config를 주입받도록 작성 (`.env.example` 제공). 실제 `.env`는 git에 커밋하지 않음.
+
+## 2026-07-06 — v1 구현 완료 (같은 세션)
+
+### 구현 범위
+스펙 4장의 오늘의 운동/대시보드/알림 기능을 모두 구현. 라우팅은 `HashRouter` 사용 — GitHub Pages는 정적 호스팅이라 서버사이드 리라이트 설정 없이 새로고침 시 404가 나지 않도록 하기 위함(BrowserRouter 대신 선택).
+
+### 통계 계산 범위에 대한 실용적 단순화
+- 스펙 4.2의 "총 참여일수/총 완주일수"는 문구상 전체 기간(all-time)으로 읽히지만, 매번 전체 기록을 무제한 조회하는 대신 **최근 400일(약 13개월)** 범위로 조회해 통계를 계산하도록 단순화함 (`Dashboard.jsx`의 `STATS_LOOKBACK_DAYS`).
+- 이유: Firestore 쿼리 비용/속도, 그리고 "꾸준함 확인"이라는 앱의 목적상 1년 이상 과거까지 정확히 볼 필요는 낮다고 판단. 이후 실사용 중 더 긴 이력이 필요해지면 이 상수만 늘리면 됨.
+- 대시보드의 "선택 기간 평균 완료율" 통계 카드는 탭(일/주/월/분기/년)에 따라 해당 기간으로 필터링한 후 계산 (`periodRecords()`).
+
+### 오프라인 재연결 시 스트릭 오탐 가능성 (알려진 한계, 미해결)
+- `calcCurrentStreak`은 클라이언트에서 로컬에 캐시된 `records`를 기준으로 계산. Firestore 오프라인 퍼시스턴스를 쓰기 때문에, 오프라인 상태에서 체크한 기록은 재연결 전까지 서버에 반영되지 않지만 로컬 스냅샷에는 즉시 반영되므로 UI상 스트릭 계산 자체는 정상 동작. 별도 조치 불필요하다고 판단(결정사항 3과 일치).
+
+### 차트/시각화 라이브러리
+- `recharts@2.15.4` 사용. npm이 "2.x는 유지보수 종료, 3.x로 이전 권장" 경고를 띄우지만, 코드 예제와 타입이 안정적인 2.x로 유지 — 이번 세션에서 3.x 마이그레이션 가이드까지 검증할 여유가 없었음. 추후 필요 시 `recharts@^3`로 업그레이드 검토.
+- `npm audit`에서 esbuild/vite 관련 moderate 취약점 1건 확인 — **개발 서버 전용** 취약점(임의 사이트가 dev 서버에 요청을 보낼 수 있음)이라 프로덕션 빌드에는 영향 없음. `vite@8`로 강제 업그레이드하면 breaking change라 이번 세션에서는 보류.
+
+### FCM 서비스워커 config 전달 방식
+- `public/firebase-messaging-sw.js`는 정적 파일이라 Vite의 `import.meta.env`를 쓸 수 없음. 서비스워커 등록 시 Firebase config를 쿼리 파라미터로 넘기고, 워커 내부에서 `self.location.search`로 파싱하는 방식을 채택 (Firebase 커뮤니티에서 자주 쓰는 패턴). Firebase 웹 config 값은 공개되어도 되는 값(보안은 Firestore 규칙이 담당)이라 쿼리스트링 노출은 문제 없음.
+
+### Firestore 보안 규칙 요약 (`firestore.rules`)
+- `profiles/{profileId}`: 읽기는 대시보드 열람 권한자 또는 해당 기기 자신, 쓰기는 해당 기기(uid가 deviceUids에 포함)만. `create`는 로그인(익명 포함)만 되어 있으면 허용 — profileId가 "father"/"mother" 고정값이라 앱이 의도한 두 문서 외에는 실질적으로 생성되지 않는 폐쇄형 구조라는 전제.
+- `records/{profileId}/days/{date}`: 읽기는 `users/{uid}.allowedProfiles`에 포함된 경우만, 쓰기는 해당 profile의 deviceUids에 포함된 uid만.
+- `users/{uid}`: 본인만 읽기, 쓰기는 전부 차단(콘솔 수동 설정 전제, 결정사항 2와 일치).
+- **미검증 상태**: 실제 Firebase 프로젝트가 없어 에뮬레이터/실배포로 규칙을 테스트하지 못함 — 배포 후 반드시 시나리오별(다른 기기가 다른 프로필 쓰기 시도 등) 테스트 필요.
+
+### 아직 남은 것 (checklist.md "v1 이후 남은 작업" 참고)
+- 실제 Firebase 프로젝트 생성/설정, Cloud Functions 배포(Blaze 요금제), 실기기 알림 수신 테스트는 모두 사용자 환경이 필요해 이번 세션 범위 밖.

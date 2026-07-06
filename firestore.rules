@@ -1,0 +1,37 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function allowedProfiles(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.allowedProfiles;
+    }
+
+    function isDeviceOfProfile(profileId) {
+      return request.auth.uid in resource.data.deviceUids;
+    }
+
+    match /profiles/{profileId} {
+      allow read: if isSignedIn() &&
+        (profileId in allowedProfiles(request.auth.uid) || isDeviceOfProfile(profileId));
+      // 기기 등록(익명 uid 추가)과 알림 설정은 해당 기기 자신만 수정 가능
+      allow write: if isSignedIn() && isDeviceOfProfile(profileId);
+      allow create: if isSignedIn();
+    }
+
+    match /records/{profileId}/days/{date} {
+      allow read: if isSignedIn() && profileId in allowedProfiles(request.auth.uid);
+      allow write: if isSignedIn() &&
+        request.auth.uid in get(/databases/$(database)/documents/profiles/$(profileId)).data.deviceUids;
+    }
+
+    match /users/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow write: if false; // 관리자(자녀)가 Firestore 콘솔에서 수동 설정
+    }
+  }
+}

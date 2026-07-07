@@ -71,6 +71,8 @@ export default function Settings() {
     <div className="settings">
       <h1>알림 설정 ({profileName})</h1>
 
+      <p className="notif-notice">알림 발송 기능은 현재 준비 중입니다.</p>
+
       <label>
         매일 리마인드 시간
         <input type="time" value={time} onChange={(e) => handleTimeChange(e.target.value)} />

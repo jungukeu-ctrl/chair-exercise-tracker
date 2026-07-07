@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/check-env.mjs && vite build",
     "preview": "vite preview",
     "deploy": "gh-pages -d dist",
     "test:rules": "firebase emulators:exec --only firestore \"node tests/firestore-rules.test.mjs && node tests/profile-init-order.test.mjs\""

@@ -25,7 +25,7 @@ _(정책성 변경 발생 시 날짜와 함께 여기에 기록)_
 코드/스키마/규칙은 모두 작성 완료.
 - [x] `TodayExercise.jsx`의 loadDay/loadStreak가 `ready`를 기다리지 않고 실행되던 버그 + 신규 기기 등록 완료 전 읽기 시도로 permission-denied 나던 버그 수정 (`claude/todayexercise-profile-init-order-xns6yu` 브랜치, 아래 완료 작업 참고)
 - [x] Firebase 신규 프로젝트 실제 생성 (`chairexercise-bfd03`, MyAssetDashBD/Pension-tracer와 분리) — `.env` 값 채움
-- [ ] FCM 웹 푸시 인증서(VAPID 키) 재확인 — `.env`는 `.gitignore` 대상이라 세션(컨테이너) 간 보존되지 않음. 2026-07-07 재작업 시 `VITE_FIREBASE_VAPID_KEY` 값을 못 받아 빈 값으로 둠(FCM 푸시 전송 전에 콘솔에서 재확인해 채워야 함)
+- [ ] FCM 웹 푸시 인증서(VAPID 키) 재확인 — `.env`는 `.gitignore` 대상이라 세션(컨테이너) 간 보존되지 않음. 2026-07-07 재작업 시 `VITE_FIREBASE_VAPID_KEY` 값을 못 받아 빈 값으로 둠(FCM 푸시 전송 전에 콘솔에서 재확인해 채워야 함). `check-env.mjs`가 이제 이 키 누락 시 경고를 출력하니 `npm run build` 로그에서 확인 가능
 - [x] GitHub Pages 실제 배포 실행 (`npm run deploy`) — `gh-pages` 브랜치 생성 및 배포 완료
 - [ ] 저장소 Settings > Pages에서 Source가 `gh-pages` 브랜치로 지정돼 있는지 확인 (최초 배포 시 수동 확인 필요할 수 있음)
 - [ ] Firebase Auth 콘솔에서 Google 로그인 + Anonymous 로그인 활성화 (아직 미확인)
@@ -53,6 +53,7 @@ _(정책성 변경 발생 시 날짜와 함께 여기에 기록)_
 | 2026-07-07 | CLAUDE.md A-4에 "개발 브랜치 푸시 완료 후 항상 PR 생성·병합까지 완료해 main에 배포" 규칙 추가 (PR #11 → main 병합) |
 | 2026-07-07 | 빌드 전 `.env` 필수 키 검증 + Firebase 설정 누락 런타임 가드 추가: `scripts/check-env.mjs` 신규(누락 키 있으면 `npm run build` 실패), `package.json`의 `build` 스크립트에 연결. `.env.example`에 키 분실 시 Firebase 콘솔 재확인 경로 안내 주석 추가. `src/firebase.js`에 `firebaseConfig` 값 누락 시 한국어 에러를 던지는 런타임 가드 추가. CLAUDE.md에 A-7(배포 검증) 신규 — 배포는 `npm run deploy` 성공 메시지가 아니라 실기기/브라우저 정상 로딩 확인까지가 완료 기준임을 명시. 더미 `.env`로 성공/실패 경로 모두 확인, `npm run test:rules`(13개 시나리오) 회귀 없음 확인. PR #12 → main 병합. 타 프로젝트 영향 없음 |
 | 2026-07-07 | 빌드된 사이트의 `auth/invalid-api-key` 에러 조사: 현재 세션 컨테이너에 `.env` 파일 자체가 없음을 확인(`.env.example`만 존재) — `.env`는 `.gitignore` 대상이라 새 컨테이너에는 자동 복원되지 않음이 근본 원인. 사용자가 Firebase 콘솔에서 `firebaseConfig` 값을 다시 제공(`chairexercise-bfd03` 프로젝트, 기존과 동일)하여 `.env` 재생성. `VITE_FIREBASE_VAPID_KEY`는 이번에 제공받지 못해 빈 값으로 둠(FCM 푸시 발송 전 재확인 필요, 위 "남은 작업" 참고). `npm install` 후 `npm run build` 통과(`check-env.mjs` 통과 + `vite build` 성공) 확인, 빌드 산출물(`dist/assets/*.js`)에 프로젝트ID/API 키가 정상 반영됐음을 grep으로 확인. 코드 변경 없음(로컬 `.env` 파일만 생성, git 추적 대상 아님이라 커밋할 내용 없음). 타 프로젝트 영향 없음 |
+| 2026-07-07 | `CLAUDE.md`에 A-8(세션 시작 시 `.env` 확인) 신규 추가. `scripts/check-env.mjs`에 `RECOMMENDED_KEYS`(`VITE_FIREBASE_VAPID_KEY`) 도입 — 없어도 빌드는 통과시키되 경고 로그만 출력(FCM 푸시만 영향, 핵심 기능 무관하므로 하드 실패 대상인 `REQUIRED_KEYS`에는 넣지 않음). `.env` 있음/필수 키 정상 상태에서 경고 출력 확인, `.env` 통째로 없는 경우 여전히 하드 실패(exit 1)하는 회귀 확인, `npm run test:rules`(13개 시나리오) 회귀 없음 확인. 병합된 PR #14 히스토리 위에 브랜치를 새로 얹지 않고 origin/main 기준으로 브랜치 재시작 후 작업. 타 프로젝트 영향 없음 |
 
 ## 프로젝트 개요 — 데이터 모델 (요약)
 > 상세는 `chair-exercise-tracker-spec.md` 5장 참고. 스키마 변경 시 이 섹션도 함께 갱신.

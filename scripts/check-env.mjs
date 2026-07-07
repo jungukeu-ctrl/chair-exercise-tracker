@@ -11,6 +11,9 @@ const REQUIRED_KEYS = [
   "VITE_FIREBASE_APP_ID",
 ];
 
+// 없어도 빌드는 가능하지만 없으면 동작하지 않는 기능이 있는 키 (하드 실패시키지 않고 경고만)
+const RECOMMENDED_KEYS = ["VITE_FIREBASE_VAPID_KEY"];
+
 function loadDotEnv(path) {
   if (!existsSync(path)) return {};
   const result = {};
@@ -36,3 +39,11 @@ if (missing.length > 0) {
 }
 
 console.log("환경변수 확인 완료 (필수 키 모두 존재)");
+
+const missingRecommended = RECOMMENDED_KEYS.filter((key) => !(process.env[key] || fileEnv[key]));
+if (missingRecommended.length > 0) {
+  console.warn(
+    `경고: 다음 키가 비어있습니다 — ${missingRecommended.join(", ")}\n` +
+      `빌드는 계속 진행되지만, 관련 기능(FCM 푸시 알림)은 동작하지 않습니다.`
+  );
+}

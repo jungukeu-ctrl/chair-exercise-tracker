@@ -138,6 +138,14 @@
   color: #6b7280;
 }
 
+.video-link {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: #2563eb;
+  text-decoration: none;
+}
+
 .check-button {
   font-size: 28px;
   background: none;

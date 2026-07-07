@@ -44,13 +44,15 @@ export default function TodayExercise() {
   }, [profileId]);
 
   useEffect(() => {
+    if (!ready) return;
     setLoadError(null);
     loadDay().catch((err) => setLoadError(err.message));
-  }, [loadDay]);
+  }, [ready, loadDay]);
 
   useEffect(() => {
+    if (!ready) return;
     loadStreak().catch((err) => setLoadError(err.message));
-  }, [loadStreak]);
+  }, [ready, loadStreak]);
 
   async function handleToggle(exerciseId, done) {
     await setExerciseDone(profileId, selectedDate, exerciseId, done);

@@ -141,6 +141,31 @@ async function main() {
   }
   check("기존 등록된 부모 기기의 records 쓰기 회귀 없음", true);
 
+  // 시나리오 8 (회귀): Firebase 콘솔에서 수동 생성해 deviceUids 필드가 아예 없는 profiles 문서에도
+  // 신규 기기 자가등록이 평가 오류 없이 정상 동작해야 함
+  await testEnv.clearFirestore();
+  await withoutRules((db) => setDoc(doc(db, "profiles", "father"), { name: "father" }));
+  {
+    const db = testEnv.authenticatedContext("new-device-uid").firestore();
+    await assertSucceeds(
+      setDoc(doc(db, "profiles", "father"), { name: "father", deviceUids: ["new-device-uid"] }, { merge: true })
+    );
+    const father = (await withoutRules((d) => getDoc(doc(d, "profiles", "father")))).data();
+    check(
+      "deviceUids 필드 없는 문서에서도 신규 기기 자가등록 성공",
+      JSON.stringify(father.deviceUids) === JSON.stringify(["new-device-uid"])
+    );
+  }
+
+  // 시나리오 9 (회귀): allowedProfiles 필드가 없는 users 문서를 가진 자녀 계정도 평가 오류 없이 거부되어야 함
+  await testEnv.clearFirestore();
+  await withoutRules((db) => setDoc(doc(db, "users", "no-allowed-profiles-child"), { role: "child" }));
+  {
+    const db = testEnv.authenticatedContext("no-allowed-profiles-child").firestore();
+    await assertFails(getDoc(doc(db, "profiles", "father")));
+  }
+  check("allowedProfiles 필드 없는 users 문서는 평가 오류 없이 접근 거부됨", true);
+
   await testEnv.cleanup();
 
   if (failures > 0) {

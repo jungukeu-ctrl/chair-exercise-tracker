@@ -42,7 +42,9 @@ export function useDeviceProfile() {
 
   useEffect(() => {
     if (ready && uid && profileId) {
-      registerDeviceForProfile(profileId, uid);
+      registerDeviceForProfile(profileId, uid).catch(() => {
+        // 등록 실패(예: 규칙 거부)는 이후 records 읽기 시도에서 loadError로 사용자에게 노출됨
+      });
     }
   }, [ready, uid, profileId]);
 

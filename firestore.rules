@@ -7,17 +7,19 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // users/{uid} 문서가 없는 기기(부모용 Anonymous Auth)에서도 예외 없이 빈 배열을 반환
+    // users/{uid} 문서가 없거나, 문서는 있어도 allowedProfiles 필드가 없는 경우(콘솔에서 수동 생성 등)에도
+    // 예외 없이 빈 배열을 반환 — .data.allowedProfiles로 직접 접근하면 필드 부재 시 평가 오류로 거부됨
     function allowedProfiles(uid) {
       return exists(/databases/$(database)/documents/users/$(uid))
-        ? get(/databases/$(database)/documents/users/$(uid)).data.allowedProfiles
+        ? get(/databases/$(database)/documents/users/$(uid)).data.get('allowedProfiles', [])
         : [];
     }
 
-    // profiles/{profileId} 문서가 아직 없어도 예외 없이 빈 배열을 반환
+    // profiles/{profileId} 문서가 아직 없거나, 문서는 있어도 deviceUids 필드가 없는 경우(콘솔에서 수동 생성 등)에도
+    // 예외 없이 빈 배열을 반환 — .data.deviceUids로 직접 접근하면 필드 부재 시 평가 오류로 거부됨
     function deviceUidsOf(profileId) {
       return exists(/databases/$(database)/documents/profiles/$(profileId))
-        ? get(/databases/$(database)/documents/profiles/$(profileId)).data.deviceUids
+        ? get(/databases/$(database)/documents/profiles/$(profileId)).data.get('deviceUids', [])
         : [];
     }
 

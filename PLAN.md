@@ -8,6 +8,7 @@ _(정책성 변경 발생 시 날짜와 함께 여기에 기록)_
 
 - 2026-07-06: `CLAUDE.md` 전체 교체 — 프로젝트 전용 규칙(A: 코드작성 게이트, PLAN.md 중심 운영, DO/CHECK/ACT 사이클, 브랜치·커밋 규칙, Firebase 데이터 분리) + 일반 행동 지침(B) 구조로 재편.
 - 2026-07-06: 기기 자가등록 구조적 실패 문제 해결 방향 확정 — (1) 클라이언트 사전 존재확인 read 제거, `profiles` write 규칙에 "미등록 기기의 자가등록(자기 uid만 추가)" 예외 추가. (2) 프로필당(father/mother 각각) `deviceUids` 최대 2대 상한 — 오늘의 운동 입력용 익명 기기 등록에만 적용, 대시보드(구글 로그인) 열람은 제한 없음. (3) "오늘의 운동" 화면에서 폰이 아닌 기기 접속 시 안내 문구 표시 + 체크 버튼 비활성화(보안 차단 아닌 UX 안내 수준), 대시보드에는 미적용.
+- 2026-07-07: `.env`는 `.gitignore` 대상이라 세션(컨테이너)마다 파일 자체가 존재하지 않을 수 있음을 확인 (Claude Code on the web은 매 세션 컨테이너를 새로 생성) → PLAN.md의 과거 "[x] .env 값 채움" 같은 체크는 "그 세션에서 채운 사실"만 의미하며, 새 세션에서 파일이 실제로 존재/채워져 있음을 보장하지 않음. 새 세션에서 배포/빌드 관련 작업 시작 시 `.env` 실존 여부를 먼저 확인할 것.
 
 ## 현재 브랜치
 - `claude/firestore-rules-deploy-i6x548` — `firestore.rules` 실제 배포 완료.
@@ -24,7 +25,7 @@ _(정책성 변경 발생 시 날짜와 함께 여기에 기록)_
 코드/스키마/규칙은 모두 작성 완료.
 - [x] `TodayExercise.jsx`의 loadDay/loadStreak가 `ready`를 기다리지 않고 실행되던 버그 + 신규 기기 등록 완료 전 읽기 시도로 permission-denied 나던 버그 수정 (`claude/todayexercise-profile-init-order-xns6yu` 브랜치, 아래 완료 작업 참고)
 - [x] Firebase 신규 프로젝트 실제 생성 (`chairexercise-bfd03`, MyAssetDashBD/Pension-tracer와 분리) — `.env` 값 채움
-- [x] FCM 웹 푸시 인증서(VAPID 키) 발급 — `.env`에 반영
+- [ ] FCM 웹 푸시 인증서(VAPID 키) 재확인 — `.env`는 `.gitignore` 대상이라 세션(컨테이너) 간 보존되지 않음. 2026-07-07 재작업 시 `VITE_FIREBASE_VAPID_KEY` 값을 못 받아 빈 값으로 둠(FCM 푸시 전송 전에 콘솔에서 재확인해 채워야 함)
 - [x] GitHub Pages 실제 배포 실행 (`npm run deploy`) — `gh-pages` 브랜치 생성 및 배포 완료
 - [ ] 저장소 Settings > Pages에서 Source가 `gh-pages` 브랜치로 지정돼 있는지 확인 (최초 배포 시 수동 확인 필요할 수 있음)
 - [ ] Firebase Auth 콘솔에서 Google 로그인 + Anonymous 로그인 활성화 (아직 미확인)
@@ -51,6 +52,7 @@ _(정책성 변경 발생 시 날짜와 함께 여기에 기록)_
 | 2026-07-07 | "새로고침 없이 새 프로필 열면 기록이 안 불러와지는" 버그 조사·수정: `TodayExercise.jsx`의 loadDay/loadStreak useEffect가 `useDeviceProfile`의 `ready`를 기다리지 않고 실행되던 문제 확인(가드 없음 + 의존성 배열에 `ready` 미포함이라 ready가 true로 바뀌어도 재시도 안 되는 문제 포함) → `if (!ready) return;` 가드 추가 + 의존성에 `ready` 포함. 근본 원인은 `useDeviceProfile.js`의 `setProfileId()`가 `registerDeviceForProfile()` 완료(await) 전에 `setProfileIdState`를 먼저 호출해, 신규 기기가 `profiles/{profileId}.deviceUids`에 등록되기 전에 `records` 읽기를 시도해 `firestore.rules`의 `isDeviceOfProfile` 조건 미충족으로 permission-denied 발생하던 것 → 등록 완료 후에 state를 반영하도록 순서 변경. `tests/profile-init-order.test.mjs` 신규 추가(등록 전 읽기 거부, 등록 완료 후 새로고침 없이 즉시 읽기 성공 시나리오)로 에뮬레이터 검증, 기존 `firestore-rules.test.mjs`(12개 시나리오)도 함께 통과 확인. `npm run build` 통과. `claude/todayexercise-profile-init-order-xns6yu` 브랜치에 커밋·푸시, PR #10 → main 병합, GitHub Pages 재배포 완료. 타 프로젝트 영향 없음 |
 | 2026-07-07 | CLAUDE.md A-4에 "개발 브랜치 푸시 완료 후 항상 PR 생성·병합까지 완료해 main에 배포" 규칙 추가 (PR #11 → main 병합) |
 | 2026-07-07 | 빌드 전 `.env` 필수 키 검증 + Firebase 설정 누락 런타임 가드 추가: `scripts/check-env.mjs` 신규(누락 키 있으면 `npm run build` 실패), `package.json`의 `build` 스크립트에 연결. `.env.example`에 키 분실 시 Firebase 콘솔 재확인 경로 안내 주석 추가. `src/firebase.js`에 `firebaseConfig` 값 누락 시 한국어 에러를 던지는 런타임 가드 추가. CLAUDE.md에 A-7(배포 검증) 신규 — 배포는 `npm run deploy` 성공 메시지가 아니라 실기기/브라우저 정상 로딩 확인까지가 완료 기준임을 명시. 더미 `.env`로 성공/실패 경로 모두 확인, `npm run test:rules`(13개 시나리오) 회귀 없음 확인. PR #12 → main 병합. 타 프로젝트 영향 없음 |
+| 2026-07-07 | 빌드된 사이트의 `auth/invalid-api-key` 에러 조사: 현재 세션 컨테이너에 `.env` 파일 자체가 없음을 확인(`.env.example`만 존재) — `.env`는 `.gitignore` 대상이라 새 컨테이너에는 자동 복원되지 않음이 근본 원인. 사용자가 Firebase 콘솔에서 `firebaseConfig` 값을 다시 제공(`chairexercise-bfd03` 프로젝트, 기존과 동일)하여 `.env` 재생성. `VITE_FIREBASE_VAPID_KEY`는 이번에 제공받지 못해 빈 값으로 둠(FCM 푸시 발송 전 재확인 필요, 위 "남은 작업" 참고). `npm install` 후 `npm run build` 통과(`check-env.mjs` 통과 + `vite build` 성공) 확인, 빌드 산출물(`dist/assets/*.js`)에 프로젝트ID/API 키가 정상 반영됐음을 grep으로 확인. 코드 변경 없음(로컬 `.env` 파일만 생성, git 추적 대상 아님이라 커밋할 내용 없음). 타 프로젝트 영향 없음 |
 
 ## 프로젝트 개요 — 데이터 모델 (요약)
 > 상세는 `chair-exercise-tracker-spec.md` 5장 참고. 스키마 변경 시 이 섹션도 함께 갱신.

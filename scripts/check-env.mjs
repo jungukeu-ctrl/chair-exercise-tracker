@@ -1,6 +1,13 @@
 #!/usr/bin/env node
 // 빌드 전 .env 필수 키 존재 여부를 검증 (누락 시 빌드 실패)
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, copyFileSync } from "node:fs";
+
+// .env는 .gitignore 대상이라 새 세션(컨테이너)마다 사라짐 — 저장소에 커밋된
+// .env_origin(Firebase 웹 config, 비밀값 아님)이 있으면 자동으로 복사해 채워준다.
+if (!existsSync(".env") && existsSync(".env_origin")) {
+  copyFileSync(".env_origin", ".env");
+  console.log(".env가 없어 .env_origin에서 복사했습니다.");
+}
 
 const REQUIRED_KEYS = [
   "VITE_FIREBASE_API_KEY",

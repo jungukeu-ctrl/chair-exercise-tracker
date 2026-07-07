@@ -26,11 +26,11 @@ export function useDeviceProfile() {
 
   const setProfileId = useCallback(
     async (id) => {
-      localStorage.setItem(STORAGE_KEY, id);
-      setProfileIdState(id);
       if (uid) {
         await registerDeviceForProfile(id, uid);
       }
+      localStorage.setItem(STORAGE_KEY, id);
+      setProfileIdState(id);
     },
     [uid]
   );

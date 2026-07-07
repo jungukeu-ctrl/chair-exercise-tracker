@@ -10,7 +10,7 @@ _(정책성 변경 발생 시 날짜와 함께 여기에 기록)_
 - 2026-07-06: 기기 자가등록 구조적 실패 문제 해결 방향 확정 — (1) 클라이언트 사전 존재확인 read 제거, `profiles` write 규칙에 "미등록 기기의 자가등록(자기 uid만 추가)" 예외 추가. (2) 프로필당(father/mother 각각) `deviceUids` 최대 2대 상한 — 오늘의 운동 입력용 익명 기기 등록에만 적용, 대시보드(구글 로그인) 열람은 제한 없음. (3) "오늘의 운동" 화면에서 폰이 아닌 기기 접속 시 안내 문구 표시 + 체크 버튼 비활성화(보안 차단 아닌 UX 안내 수준), 대시보드에는 미적용.
 
 ## 현재 브랜치
-- `claude/dashboard-profile-management-0s28fm` — 대시보드 프로필 관리 기능("기기 등록 초기화"/"기록 데이터 초기화") 구현 완료.
+- `claude/firestore-rules-deploy-i6x548` — `firestore.rules` 실제 배포 완료.
 - 다음 기능 작업 시작 시 이 브랜치에서 계속 진행하거나, 필요하면 새 브랜치를 판다.
 
 ## 결정 필요 항목 (구현 전 확정 필요 — `CLAUDE.md` A-6 참고)
@@ -27,7 +27,7 @@ _(정책성 변경 발생 시 날짜와 함께 여기에 기록)_
 - [x] GitHub Pages 실제 배포 실행 (`npm run deploy`) — `gh-pages` 브랜치 생성 및 배포 완료
 - [ ] 저장소 Settings > Pages에서 Source가 `gh-pages` 브랜치로 지정돼 있는지 확인 (최초 배포 시 수동 확인 필요할 수 있음)
 - [ ] Firebase Auth 콘솔에서 Google 로그인 + Anonymous 로그인 활성화 (아직 미확인)
-- [ ] Firestore 보안 규칙(`firestore.rules`) 실제 배포 및 시나리오별 테스트 (다른 기기가 다른 프로필 쓰기 시도 등)
+- [x] Firestore 보안 규칙(`firestore.rules`) 실제 배포 (시나리오별 테스트는 이전 작업에서 에뮬레이터로 검증 완료)
 - [ ] Cloud Functions(`functions/`) 배포 — Blaze(종량제) 요금제 필요
 - [ ] 실기기 알림 수신 테스트 (안드로이드)
 - [ ] `users/{자녀uid}.role = "child"` 수동 등록 (실제 배포 후)
@@ -45,6 +45,7 @@ _(정책성 변경 발생 시 날짜와 함께 여기에 기록)_
 | 2026-07-06 | "어머니 선택 후 불러오는 중 멈춤" 버그 조사 → `firestore.rules`의 `records/{profileId}/days/{date}` 읽기 규칙에 `isDeviceOfProfile` 체크가 빠져있던 버그 발견·수정, `allowedProfiles`/`deviceUidsOf`를 `exists()` 가드로 안전하게 개선(존재하지 않는 문서 `get()` 시 예외 대신 빈 배열 반환). `TodayExercise.jsx`에 로딩 에러 상태 추가(무한 스피너 대신 에러 메시지 표시). Firestore 에뮬레이터(`@firebase/rules-unit-testing`)로 직접 재현·검증하는 과정에서 **더 근본적인 별도 문제 발견**: `registerDeviceForProfile()`의 존재확인 `getDoc()` 자체가 신규/기존 프로필 관계없이 항상 권한 거부되어 기기 자가등록이 구조적으로 항상 실패함(에뮬레이터로 실증). 이 문제는 A-6에서 결정된 "Anonymous Auth 기기 매핑" 방식의 보안 규칙 재설계가 필요해 사용자 결정 대기 중(위 남은 작업 참고). `npm run build` 통과 확인. 타 프로젝트 영향 없음 |
 | 2026-07-06 | 기기 자가등록 문제 해결(위 전략 세션 로그 참고): `src/lib/profiles.js`의 `registerDeviceForProfile()`에서 사전 존재확인 `getDoc()` 제거, 항상 `setDoc(merge:true)` + `arrayUnion`으로 단순화. `firestore.rules`에 `isSelfDeviceRegistration()` 함수 추가 — 미등록 기기가 `name`/`deviceUids` 외 필드는 건드리지 않고 자기 uid 하나만 추가하는 경우만 허용, 프로필당 `deviceUids` 최대 2대 상한 적용(`allow create` 규칙은 이 함수로 대체되어 제거, 이전에는 로그인만 하면 누구나 임의 내용으로 프로필 문서를 생성할 수 있던 허점도 함께 닫힘). `src/lib/device.js` 신규 추가(`isMobileDevice()` — `navigator.userAgentData.mobile` 우선, `navigator.userAgent`의 "Mobile" 포함 여부로 폴백). `TodayExercise.jsx`에 PC/태블릿 접속 시 안내 문구(`.device-notice`, `App.css`에 스타일 추가) 표시 및 `ExerciseCard`의 체크 버튼 비활성화(`disabled` prop 추가) — 보안 차단이 아닌 UX 안내이며 대시보드에는 미적용. Firestore 에뮬레이터로 7개 시나리오(신규 생성/2대까지 등록/3대째 거부/records 읽기/설정 변경/자가등록 위장 필드변경 거부/타 기기 제거 시도 거부) 모두 기대대로 동작 확인. `npm run build` 통과. 타 프로젝트 영향 없음 |
 | 2026-07-06 | 대시보드에 자녀 계정 전용 "프로필 관리" 기능 2종 추가: `src/components/ProfileManagement.jsx` 신규(아버지/어머니 각각 "기기 등록 초기화"/"기록 데이터 초기화" 버튼, 기록 삭제는 프로필 이름 직접 입력 확인). `src/lib/profiles.js`에 `resetDeviceUids()`(deviceUids만 빈 배열로 merge), `src/lib/records.js`에 `deleteAllDaysForProfile()`(500건 단위 batched delete) 추가. `Dashboard.jsx`는 `access.role === "child"`일 때만 이 섹션을 렌더링하고, 기록 삭제 후 현재 보고 있는 프로필이면 통계/일별 뷰를 즉시 재조회. `firestore.rules`에 `isChildOf()`/`isChildDeviceReset()` 함수 추가 — `profiles` write에 "자녀가 deviceUids만 빈 배열로 재설정"하는 경우 허용(다른 필드 동시 변경/빈 배열이 아닌 값은 거부), `records/{profileId}/days/{date}`에 자녀 전용 `allow delete` 추가(부모 기기의 기존 write 권한과 완전히 별개). `@firebase/rules-unit-testing@4`(firebase 11.x와 호환) + `firebase-tools`를 devDependency로 추가하고 `npm run test:rules` 스크립트로 12개 시나리오(기기 초기화가 records/다른 프로필에 영향 없음, 기록 삭제가 deviceUids/다른 프로필에 영향 없음, deviceUids 초기화 시 다른 필드 동시 변경·비어있지 않은 값 거부, allowedProfiles 밖 프로필 차단, role≠child 차단, 기존 부모 기기 write 회귀 없음) 모두 통과 확인. `npm run build` 통과. 타 프로젝트 영향 없음 |
+| 2026-07-07 | `firestore.rules` 실제 배포: 사용자가 발급한 Firebase 서비스 계정 키로 `firebase deploy --only firestore:rules --project chairexercise-bfd03` 실행. 프로젝트 바인딩을 위해 `.firebaserc` 신규 추가(커밋 `bf22923`). 배포 과정에서 서비스 계정에 `serviceusage.serviceUsageConsumer`, `firebaserules.admin` IAM 역할이 없어 403 오류 발생 → 사용자가 Google Cloud IAM 콘솔에서 두 역할 추가 후 배포 성공(`Deploy complete!`, 콘솔: https://console.firebase.google.com/project/chairexercise-bfd03/overview). 규칙 자체 변경 없음(기존 파일 그대로 배포). 사용한 서비스 계정 키는 세션 종료 후 Firebase 콘솔에서 폐기(rotate) 권장. 타 프로젝트 영향 없음 |
 
 ## 프로젝트 개요 — 데이터 모델 (요약)
 > 상세는 `chair-exercise-tracker-spec.md` 5장 참고. 스키마 변경 시 이 섹션도 함께 갱신.

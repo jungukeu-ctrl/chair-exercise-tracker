@@ -28,6 +28,7 @@ function toDateStr(d) {
 
 export default function Dashboard() {
   const { user, access, ready, login, logout } = useGoogleAuth();
+  console.log('로그인 uid:', user?.uid, 'access:', access);
   const [profileId, setProfileId] = useState(null);
   const [tab, setTab] = useState("일");
   const [selectedDate, setSelectedDate] = useState(toDateStr(new Date()));

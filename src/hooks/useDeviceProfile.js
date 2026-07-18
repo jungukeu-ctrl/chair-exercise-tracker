@@ -26,11 +26,13 @@ export function useDeviceProfile() {
 
   const setProfileId = useCallback(
     async (id) => {
-      if (uid) {
-        await registerDeviceForProfile(id, uid);
-      }
+      // localStorage와 상태는 Firestore 등록 성공 여부와 무관하게 반드시 먼저 저장
       localStorage.setItem(STORAGE_KEY, id);
       setProfileIdState(id);
+      // Firestore 기기 등록은 백그라운드 시도 — 실패해도 프로필 선택은 이미 완료됨
+      if (uid) {
+        registerDeviceForProfile(id, uid).catch(() => {});
+      }
     },
     [uid]
   );

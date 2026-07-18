@@ -1,78 +1,100 @@
-// 오늘의 운동 기록 화면 (부모님용, 로그인 없음)
-import { useEffect, useState, useCallback } from "react";
-import { useDeviceProfile } from "../hooks/useDeviceProfile";
-import { isMobileDevice } from "../lib/device";
+// 오늘의 운동 기록 화면 — localStorage 전용 (Firebase 없음)
+import { useState } from "react";
 import { EXERCISES, PROFILES } from "../constants/exercises";
-import { getDayRecord, setExerciseDone, setExerciseMemo, getRecordsInRange } from "../lib/records";
-import { calcCurrentStreak } from "../lib/stats";
+import { isMobileDevice } from "../lib/device";
 import ProfilePicker from "../components/ProfilePicker";
-import ExerciseCard from "../components/ExerciseCard";
 import ProgressRing from "../components/ProgressRing";
 import StreakBadge from "../components/StreakBadge";
 import CelebrationStamp from "../components/CelebrationStamp";
+import ExerciseCard from "../components/ExerciseCard";
+
+const PROFILE_KEY = "chair-exercise-device-profile";
+const RECORDS_KEY = "chair-exercise-records";
 
 function toDateStr(d) {
   return d.toISOString().slice(0, 10);
 }
 
-const STREAK_LOOKBACK_DAYS = 60;
+function loadRecords() {
+  try {
+    return JSON.parse(localStorage.getItem(RECORDS_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function saveRecords(records) {
+  localStorage.setItem(RECORDS_KEY, JSON.stringify(records));
+}
+
+function getDayRecord(records, profileId, date) {
+  const exercises = {};
+  for (const ex of EXERCISES) {
+    exercises[ex.id] = records?.[profileId]?.[date]?.[ex.id] || { done: false, memo: "" };
+  }
+  return exercises;
+}
+
+function calcStreak(records, profileId) {
+  let streak = 0;
+  const d = new Date();
+  for (let i = 0; i < 60; i++) {
+    const dateStr = toDateStr(d);
+    const dayData = records?.[profileId]?.[dateStr];
+    const count = dayData ? Object.values(dayData).filter((e) => e.done).length : 0;
+    if (count === EXERCISES.length) {
+      streak++;
+    } else if (i > 0) {
+      break;
+    }
+    d.setDate(d.getDate() - 1);
+  }
+  return streak;
+}
 
 export default function TodayExercise() {
-  const { profileId, setProfileId, clearProfileId, ready } = useDeviceProfile();
+  const [profileId, setProfileId] = useState(() => localStorage.getItem(PROFILE_KEY));
   const [selectedDate, setSelectedDate] = useState(toDateStr(new Date()));
-  const [dayRecord, setDayRecord] = useState(null);
-  const [streak, setStreak] = useState(0);
+  const [records, setRecords] = useState(loadRecords);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [loadError, setLoadError] = useState(null);
   const isMobile = isMobileDevice();
 
   const isToday = selectedDate === toDateStr(new Date());
+  const dayRecord = getDayRecord(records, profileId, selectedDate);
+  const completedCount = Object.values(dayRecord).filter((e) => e.done).length;
+  const streak = profileId ? calcStreak(records, profileId) : 0;
 
-  const loadDay = useCallback(async () => {
-    if (!profileId) return null;
-    const record = await getDayRecord(profileId, selectedDate);
-    setDayRecord(record);
-    return record;
-  }, [profileId, selectedDate]);
+  function selectProfile(id) {
+    localStorage.setItem(PROFILE_KEY, id);
+    setProfileId(id);
+  }
 
-  const loadStreak = useCallback(async () => {
-    if (!profileId) return;
-    const start = new Date();
-    start.setDate(start.getDate() - STREAK_LOOKBACK_DAYS);
-    const records = await getRecordsInRange(profileId, toDateStr(start), toDateStr(new Date()));
-    setStreak(calcCurrentStreak(records));
-  }, [profileId]);
+  function clearProfile() {
+    localStorage.removeItem(PROFILE_KEY);
+    setProfileId(null);
+  }
 
-  useEffect(() => {
-    if (!ready) return;
-    setLoadError(null);
-    loadDay().catch((err) => setLoadError(err.message));
-  }, [ready, loadDay]);
+  function updateExercise(exerciseId, patch) {
+    const updated = loadRecords();
+    if (!updated[profileId]) updated[profileId] = {};
+    if (!updated[profileId][selectedDate]) updated[profileId][selectedDate] = {};
+    updated[profileId][selectedDate][exerciseId] = {
+      ...updated[profileId][selectedDate][exerciseId],
+      ...patch,
+    };
+    saveRecords(updated);
+    setRecords({ ...updated });
 
-  useEffect(() => {
-    if (!ready) return;
-    loadStreak().catch((err) => setLoadError(err.message));
-  }, [ready, loadStreak]);
-
-  async function handleToggle(exerciseId, done) {
-    await setExerciseDone(profileId, selectedDate, exerciseId, done);
-    const updated = await loadDay();
-    if (isToday) await loadStreak();
-    if (updated.completedCount === EXERCISES.length) {
+    const newCount = Object.values(updated[profileId][selectedDate]).filter((e) => e.done).length;
+    if (patch.done && newCount === EXERCISES.length) {
       setShowCelebration(true);
       setTimeout(() => setShowCelebration(false), 2500);
     }
   }
 
-  async function handleMemoChange(exerciseId, memo) {
-    await setExerciseMemo(profileId, selectedDate, exerciseId, memo);
-    await loadDay();
+  if (!profileId) {
+    return <ProfilePicker onSelect={selectProfile} />;
   }
-
-  if (!ready) return <div className="loading">불러오는 중...</div>;
-  if (!profileId) return <ProfilePicker onSelect={setProfileId} />;
-  if (loadError) return <div className="loading">기록을 불러오지 못했습니다. ({loadError})</div>;
-  if (!dayRecord) return <div className="loading">불러오는 중...</div>;
 
   const profileName = PROFILES.find((p) => p.id === profileId)?.name;
 
@@ -83,7 +105,7 @@ export default function TodayExercise() {
           <h1>오늘의 운동</h1>
           <p>{profileName}님</p>
         </div>
-        <button className="change-profile" onClick={clearProfileId}>
+        <button className="change-profile" onClick={clearProfile}>
           프로필 변경
         </button>
       </header>
@@ -101,7 +123,7 @@ export default function TodayExercise() {
       </div>
 
       <div className="summary">
-        <ProgressRing completed={dayRecord.completedCount} total={EXERCISES.length} />
+        <ProgressRing completed={completedCount} total={EXERCISES.length} />
         <StreakBadge streak={streak} />
       </div>
 
@@ -110,11 +132,11 @@ export default function TodayExercise() {
           <ExerciseCard
             key={ex.id}
             exercise={ex}
-            done={dayRecord.exercises[ex.id]?.done || false}
-            memo={dayRecord.exercises[ex.id]?.memo}
+            done={dayRecord[ex.id].done}
+            memo={dayRecord[ex.id].memo}
             disabled={!isMobile}
-            onToggle={(done) => handleToggle(ex.id, done)}
-            onMemoChange={(memo) => handleMemoChange(ex.id, memo)}
+            onToggle={(done) => updateExercise(ex.id, { done })}
+            onMemoChange={(memo) => updateExercise(ex.id, { memo })}
           />
         ))}
       </div>

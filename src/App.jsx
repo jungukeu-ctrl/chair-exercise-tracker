@@ -10,8 +10,6 @@ export default function App() {
     <HashRouter>
       <nav className="main-nav">
         <Link to="/">오늘의 운동</Link>
-        <Link to="/dashboard">기록 보기</Link>
-        <Link to="/settings">설정</Link>
       </nav>
       <Routes>
         <Route path="/" element={<TodayExercise />} />
